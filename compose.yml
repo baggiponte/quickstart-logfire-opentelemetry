@@ -1,0 +1,42 @@
+services:
+  dice-roller:
+    build:
+      context: .
+      dockerfile: src/dice_roller/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LOGFIRE_BASE_URL=otel-collector:4317
+      - LOGFIRE_SEND_TO_LOGFIRE=false
+    depends_on:
+      - otel-collector
+
+  dice-player:
+    build:
+      context: .
+      dockerfile: src/dice_player/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - LOGFIRE_BASE_URL=otel-collector:4317
+      - LOGFIRE_SEND_TO_LOGFIRE=false
+    depends_on:
+      - otel-collector
+      - dice-roller
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686" # go to localhost:16686 to see the jaeger UI
+      - "14268"
+      - "14250"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+    depends_on:
+      - jaeger
